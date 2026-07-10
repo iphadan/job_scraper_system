@@ -1,0 +1,27 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: api-gateway-spring
+  main:
+    allow-circular-references: true
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/job-scraper-system_db
+    username: postgres
+    password: postgres
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        enable_lazy_load_no_trans: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+security:
+  ignored: "*.bundle.*"

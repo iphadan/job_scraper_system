@@ -1,0 +1,126 @@
+
+networks:
+  scraper-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  frontend_node_modules: # 🌟 1. Declare a named volume for Linux dependencies
+
+services:
+  # --- INFRASTRUCTURE ---
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: scraper-postgres
+    environment:
+      POSTGRES_DB: job_scraper_system_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - scraper-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d job_scraper_system_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  activemq-broker:
+    image: apache/activemq-artemis:latest-alpine
+    container_name: scraper-activemq
+    environment:
+      AMQ_USER: admin
+      AMQ_PASSWORD: adminPassword
+    ports:
+      - "61616:61616"
+      - "8161:8161"
+    networks:
+      - scraper-network
+
+  mailpit-smtp:
+    image: axllent/mailpit:latest
+    container_name: scraper-mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - scraper-network
+
+  # --- CUSTOM APPLICATIONS WITH BIND MOUNTS ---
+  
+  frontend-react:
+      build:
+        context: ./frontend-react
+        dockerfile: dev.Dockerfile
+      container_name: scraper-frontend
+      ports:
+        - "5173:5173"
+      volumes:
+        - ./frontend-react:/app
+        - frontend_node_modules:/app/node_modules # 🌟 2. Map the isolated Linux volume here
+      environment:
+        - VITE_API_URL=http://localhost/api
+      networks:
+        - scraper-network
+
+  api-gateway:
+    build:
+      context: ./api-gateway-spring
+      dockerfile: api.Dockerfile
+      network: host
+    container_name: scraper-api-gateway
+    volumes:
+      # 🌟 Mount your target folder so container tracks compilation changes instantly
+      - ./api-gateway-spring/target:/app/target 
+    environment:
+      - DB_HOST=postgres-db
+      - DB_USER=postgres
+      - DB_PASSWORD=root
+      - SPRING_ARTEMIS_BROKER_URL=tcp://activemq-broker:61616
+      - SPRING_ARTEMIS_USER=admin
+      - SPRING_ARTEMIS_PASSWORD=adminPassword
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - scraper-network
+
+  background-worker:
+    build:
+      context: ./background-worker-spring
+      dockerfile: worker.Dockerfile
+      network: host
+    container_name: scraper-background-worker
+    volumes:
+      - ./background-worker-spring/target:/app/target
+    environment:
+      - DB_HOST=postgres-db
+      - DB_USER=postgres
+      - DB_PASSWORD=root
+      - SPRING_ARTEMIS_BROKER_URL=tcp://activemq-broker:61616
+      - SPRING_ARTEMIS_USER=admin
+      - SPRING_ARTEMIS_PASSWORD=adminPassword
+      - SPRING_MAIL_HOST=mailpit-smtp
+      - SPRING_MAIL_PORT=1025
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - scraper-network
+
+  # --- REVERSE PROXY ---
+  nginx-router:
+    image: nginx:alpine
+    container_name: scraper-nginx-router
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend-react
+      - api-gateway
+    networks:
+      - scraper-network
