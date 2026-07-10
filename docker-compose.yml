@@ -79,9 +79,15 @@ services:
       - DB_HOST=postgres-db
       - DB_USER=postgres
       - DB_PASSWORD=root
+      - DB_NAME=job_scraper_system_db
+      - DB_PORT=5432
       - SPRING_ARTEMIS_BROKER_URL=tcp://activemq-broker:61616
       - SPRING_ARTEMIS_USER=admin
       - SPRING_ARTEMIS_PASSWORD=adminPassword
+      - SERVER_PORT=8080
+      - MQ_HOST=activemq-broker
+      - MQ_USER=admin
+      - MQ_PASSWORD=adminPassword
     depends_on:
       postgres-db:
         condition: service_healthy

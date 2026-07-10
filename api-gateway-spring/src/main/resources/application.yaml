@@ -1,15 +1,13 @@
-server:
-  port: 8081
 spring:
   application:
-    name: api-gateway-spring
-  main:
-    allow-circular-references: true
+    name: api-gateway
 
+  # Database Configuration
   datasource:
-    url: jdbc:postgresql://localhost:5432/job-scraper-system_db
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:job-scraper-system_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
@@ -23,5 +21,11 @@ spring:
           lob:
             non_contextual_creation: true
 
-security:
-  ignored: "*.bundle.*"
+  # ActiveMQ Configuration
+  activemq:
+    broker-url: tcp://${MQ_HOST:localhost}:61616
+    user: ${MQ_USER:admin}
+    password: ${MQ_PASSWORD:admin}
+
+server:
+  port: ${SERVER_PORT:8080}
