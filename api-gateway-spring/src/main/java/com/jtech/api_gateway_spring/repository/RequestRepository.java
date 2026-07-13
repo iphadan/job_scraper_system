@@ -7,5 +7,7 @@ import java.util.List;
 
 @Repository
 public interface RequestRepository extends JpaRepository<Request, Long> {
-    List<String> findByUsername(String username);
+
+    // 🌟 Clean database-level indexed lookup replacing memory-heavy Java stream filters
+    List<Request> findByUsernameIgnoreCase(String username);
 }

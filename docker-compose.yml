@@ -72,6 +72,8 @@ services:
       dockerfile: api.Dockerfile
       network: host
     container_name: scraper-api-gateway
+    ports:
+      - "8080:8080"
     volumes:
       # 🌟 Mount your target folder so container tracks compilation changes instantly
       - ./api-gateway-spring/target:/app/target 

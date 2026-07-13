@@ -16,6 +16,6 @@ COPY --from=builder /build/target/*.jar app.jar
 
 # Workers don't listen on external ports because they consume from ActiveMQ,
 # but we document it if you ever add health-check actuators.
-EXPOSE 8081
+EXPOSE 8080
 
 CMD ["java", "-jar", "app.jar"]
