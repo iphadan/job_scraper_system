@@ -1,13 +1,16 @@
 package com.jtech.api_gateway_spring.service;
 
 import com.jtech.api_gateway_spring.dto.JobScrapePayload;
+import com.jtech.api_gateway_spring.model.Request;
 import com.jtech.api_gateway_spring.model.TargetSite;
-import com.jtech.api_gateway_spring.repository.TargetSiteRepository;
+import com.jtech.api_gateway_spring.repository.RequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -16,38 +19,46 @@ import java.util.List;
 @Slf4j
 public class JobOrchestrationScheduler {
 
-    private final TargetSiteRepository targetSiteRepository;
+    // 🌟 Switch dependency to RequestRepository
+    private final RequestRepository requestRepository;
     private final JmsTemplate jmsTemplate;
-    
-    private static final String QUEUE_NAME = "job.scrape.queue"; // Wire specification queue [cite: 50]
 
-    // Centralized programmatic scheduler loop [cite: 62]
+    private static final String QUEUE_NAME = "job.scrape.queue";
+
     @Scheduled(cron = "${app.scheduler.cron:0 */15 * * * *}") // Defaults to every 15 minutes
+    @Transactional(readOnly = true) // Keeps Hibernate session open to lazy-load collections if needed
     public void executeCoreTick() {
         log.info("Initiating system core orchestration tick...");
 
-        // 1. Target Filtering [cite: 63]
-        List<TargetSite> activeTargets = targetSiteRepository.findAllActiveSubscriptionTargets();
-        log.info("Aggregated {} active target sites for queue balancing.", activeTargets.size());
+        // 1. Pull active subscription requests
+        List<Request> activeRequests = requestRepository.findAllActiveRequestsWithSites();
+        log.info("Aggregated {} active user requests for processing.", activeRequests.size());
 
-        // 2. Granular Queue Partitioning [cite: 65]
-        for (TargetSite target : activeTargets) {
-            // Process the comma-delimited targeting criteria array [cite: 39]
-            List<String> keywordList = Arrays.asList(target.getRequest().getKeywords().split("\\s*,\\s*"));
+        // 2. Map and split workloads
+        for (Request request : activeRequests) {
+            // Split comma-separated keywords
+            List<String> keywordList = Arrays.asList(request.getKeywords().split("\\s*,\\s*"));
 
-            JobScrapePayload payload = new JobScrapePayload(
-                target.getRequest().getId(),
-                target.getId(),
-                target.getUrl(),
-                keywordList
-            );
+            // Dispatch a payload for every targeted site linked to this request
+            for (TargetSite target : request.getTargetSites()) {
 
-            // 3. Dispatch to ActiveMQ Broker Grid
-            try {
-                jmsTemplate.convertAndSend(QUEUE_NAME, payload);
-                log.debug("Fractured and dispatched target task to broker: RequestID -> {}", payload.requestId());
-            } catch (Exception e) {
-                log.error("Failed to stream orchestration target task to processing grid ID: {}", target.getId(), e);
+                // Construct the updated payload structure
+                JobScrapePayload payload = new JobScrapePayload(
+                        request.getId(),
+                        target.getSiteCode(), // Use clean site code (e.g. "REMOTEOK") instead of auto-incremented target IDs
+                        target.getUrl(),      // Base URL/API endpoint
+                        keywordList
+                );
+
+                // 3. Stream to ActiveMQ
+                try {
+                    jmsTemplate.convertAndSend(QUEUE_NAME, payload);
+                    log.debug("Dispatched task to broker: RequestID -> {}, SiteCode -> {}",
+                            payload.requestId(), payload.siteCode());
+                } catch (Exception e) {
+                    log.error("Failed to stream target task to broker for Request ID: {}, Site: {}",
+                            request.getId(), target.getSiteCode(), e);
+                }
             }
         }
     }

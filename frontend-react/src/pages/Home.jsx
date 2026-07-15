@@ -1,29 +1,46 @@
 import React, { useState, useEffect } from 'react';
+import './Home.css';
 
 const Home = ({ onLogout }) => {
     const [requests, setRequests] = useState([]);
+    
+    // 🌟 State holding the DB-sourced supported boards
+    const [supportedBoards, setSupportedBoards] = useState([]);
+    
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [keywords, setKeywords] = useState('');
+    
+    // Checkbox mapping state (dynamically populated)
+    const [selectedSites, setSelectedSites] = useState({});
+    
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const username = localStorage.getItem('username');
 
-    // Reusable fetch function to load tracking strategies
-    const fetchScraperRequests = async () => {
+    // Fetch user requests & supported sites from database
+    const fetchDashboardData = async () => {
         const token = localStorage.getItem('token');
-        try {
-            const response = await fetch('/api/requests', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+        const headers = { 'Authorization': `Bearer ${token}` };
 
-            if (response.status === 403 || response.status === 401) {
+        try {
+            // 1. Fetch user strategies
+            const reqResponse = await fetch('/api/requests', { headers });
+            if (reqResponse.status === 403 || reqResponse.status === 401) {
                 throw new Error('Unauthorized access session expired.');
             }
+            const reqData = await reqResponse.json();
+            setRequests(reqData);
 
-            if (response.ok) {
-                const data = await response.json();
-                setRequests(data);
+            // 🌟 2. Fetch target site directory dynamically from database
+            const sitesResponse = await fetch('/api/target-sites', { headers });
+            if (sitesResponse.ok) {
+                const sitesData = await sitesResponse.json();
+                setSupportedBoards(sitesData);
+                
+                // Initialize selection state using DB keys
+                setSelectedSites(
+                    sitesData.reduce((acc, site) => ({ ...acc, [site.siteCode]: false }), {})
+                );
             }
         } catch (err) {
             setError(err.message);
@@ -31,13 +48,34 @@ const Home = ({ onLogout }) => {
     };
 
     useEffect(() => {
-        fetchScraperRequests();
+        fetchDashboardData();
     }, []);
 
-    // Handle Form Submission (POST Request)
+    const handleCheckboxChange = (code) => {
+        setSelectedSites(prev => ({ ...prev, [code]: !prev[code] }));
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setKeywords('');
+        // Reset check states based on DB boards
+        setSelectedSites(supportedBoards.reduce((acc, b) => ({ ...acc, [b.siteCode]: false }), {}));
+        setError('');
+    };
+
     const handleCreateStrategy = async (e) => {
         e.preventDefault();
         if (!keywords.trim()) return;
+
+        // Map selections
+        const targetSitesPayload = Object.keys(selectedSites)
+            .filter(code => selectedSites[code])
+            .map(code => ({ siteCode: code }));
+
+        if (targetSitesPayload.length === 0) {
+            setError('Please select at least one target platform.');
+            return;
+        }
 
         setError('');
         setIsSubmitting(true);
@@ -50,18 +88,16 @@ const Home = ({ onLogout }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                // Notice we DO NOT send a username field here! The backend resolves it securely via JWT.
-                body: JSON.stringify({ keywords }) 
+                body: JSON.stringify({ 
+                    keywords: keywords, 
+                    targetSites: targetSitesPayload 
+                }) 
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to create scraping strategy.');
-            }
+            if (!response.ok) throw new Error('Failed to save tracking strategy.');
 
-            // Reset form field and refresh the dashboard list view
-            setKeywords('');
-            await fetchScraperRequests();
-
+            handleCloseModal();
+            await fetchDashboardData();
         } catch (err) {
             setError(err.message);
         } finally {
@@ -70,44 +106,96 @@ const Home = ({ onLogout }) => {
     };
 
     return (
-        <div style={{ padding: '2rem', fontFamily: 'Arial, sans-serif' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1>Welcome back, <span style={{ color: '#007bff' }}>{username}</span></h1>
-                <button onClick={onLogout} style={styles.logoutBtn}>Logout</button>
+        <div className="home-container">
+            <div className="home-header">
+                <h1>Welcome back, <span className="username-accent">{username}</span></h1>
+                <button onClick={onLogout} className="logout-btn">Logout</button>
             </div>
             <hr />
 
-            {/* Strategy Creation Section */}
-            <div style={styles.formContainer}>
-                <h3>Create New Scraper Strategy</h3>
-                <form onSubmit={handleCreateStrategy} style={{ display: 'flex', gap: '1rem' }}>
-                    <input 
-                        type="text" 
-                        placeholder="e.g., Python Developer, Remote React, Docker Engineer"
-                        value={keywords}
-                        onChange={(e) => setKeywords(e.target.value)}
-                        disabled={isSubmitting}
-                        style={styles.input}
-                        required
-                    />
-                    <button type="submit" disabled={isSubmitting} style={styles.submitBtn}>
-                        {isSubmitting ? 'Saving...' : 'Add Strategy'}
-                    </button>
-                </form>
-            </div>
+            <button onClick={() => setIsModalOpen(true)} className="open-modal-btn">
+                ➕ Add Scraper Strategy
+            </button>
 
-            {error && <p style={{ color: 'red', backgroundColor: '#fce8e6', padding: '0.5rem', borderRadius: '4px' }}>{error}</p>}
+            {error && <div className="error-banner">{error}</div>}
 
-            {/* Dashboard Workspace List Display */}
-            <h3>Your Scraping Strategies</h3>
+            {/* Modal Layer */}
+            {isModalOpen && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h2>New Scraping Strategy</h2>
+                        <hr />
+                        
+                        <form onSubmit={handleCreateStrategy}>
+                            <div className="form-group">
+                                <label htmlFor="keywords">Target Keywords</label>
+                                <input 
+                                    id="keywords"
+                                    type="text" 
+                                    placeholder="e.g., Python, Remote React, Docker"
+                                    value={keywords}
+                                    onChange={(e) => setKeywords(e.target.value)}
+                                    className="text-input"
+                                    required
+                                    disabled={isSubmitting}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Select Target Job Boards</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                    {/* 🌟 Dynamically render checkboxes from DB query */}
+                                    {supportedBoards.length === 0 ? (
+                                        <p style={{ color: '#888', fontStyle: 'italic' }}>Loading job boards...</p>
+                                    ) : (
+                                        supportedBoards.map(board => (
+                                            <label key={board.siteCode} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={!!selectedSites[board.siteCode]} 
+                                                    onChange={() => handleCheckboxChange(board.siteCode)}
+                                                    disabled={isSubmitting}
+                                                /> 
+                                                {board.shortName}
+                                            </label>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="modal-actions">
+                                <button type="button" onClick={handleCloseModal} className="cancel-btn" disabled={isSubmitting}>Cancel</button>
+                                <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                                    {isSubmitting ? 'Saving...' : 'Create Scraper'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            <h3>Active Scraping Strategies</h3>
             {requests.length === 0 ? (
-                <p style={{ color: '#666', fontStyle: 'italic' }}>No active subscription tracking strategies found. Use the form above to add one!</p>
+                <p style={{ color: '#666', fontStyle: 'italic' }}>No tracking strategies configured yet.</p>
             ) : (
-                <div style={styles.grid}>
+                <div className="strategy-grid">
                     {requests.map(req => (
-                        <div key={req.id} style={styles.card}>
+                        <div key={req.id} className="card">
                             <h4>🔑 Keywords: {req.keywords}</h4>
-                            <p>Status: <span style={styles.statusBadge}>{req.status}</span></p>
+                            <p style={{ margin: '0.75rem 0', color: '#555' }}>
+                                🌐 Target Engines: {req.targetSites && req.targetSites.length > 0 ? (
+                                    req.targetSites.map((site, idx) => (
+                                        <span key={idx} style={{ marginRight: '0.4rem' }}>
+                                            <code style={{ background: '#e8f0fe', color: '#1a73e8', padding: '0.2rem 0.4rem', borderRadius: '4px', fontWeight: 'bold' }} title={site.url}>
+                                                {site.shortName}
+                                            </code>
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span style={{ color: '#888', fontStyle: 'italic' }}>None mapped</span>
+                                )}
+                            </p>
+                            <p>Status: <span className="status-badge">{req.status}</span></p>
                             <small style={{ color: '#888' }}>ID Reference: #{req.id}</small>
                         </div>
                     ))}
@@ -115,16 +203,6 @@ const Home = ({ onLogout }) => {
             )}
         </div>
     );
-};
-
-const styles = {
-    logoutBtn: { padding: '0.5rem 1rem', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    formContainer: { backgroundColor: '#f8f9fa', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid #e9ecef' },
-    input: { flex: 1, padding: '0.75rem', borderRadius: '4px', border: '1px solid #ced4da', fontSize: '1rem' },
-    submitBtn: { padding: '0.75rem 1.5rem', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1rem' },
-    card: { border: '1px solid #dee2e6', padding: '1rem', borderRadius: '8px', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
-    statusBadge: { backgroundColor: '#e2f0d9', color: '#385723', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }
 };
 
 export default Home;

@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "target_sites")
@@ -17,13 +16,12 @@ public class TargetSite {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "request_id", nullable = false, foreignKey = @ForeignKey(name = "fk_target_sites_requests"))
-    private Request request;
+    @Column(name = "site_code", nullable = false, unique = true, length = 50)
+    private String siteCode; // e.g., "REMOTEOK"
+
+    @Column(name = "short_name", nullable = false, length = 100)
+    private String shortName; // e.g., "RemoteOK API"
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    private String url; // The explicit web address pointer targeted for scraping [cite: 44]
-
-    @Column(name = "last_scraped")
-    private LocalDateTime lastScraped; // Tracking previous grid evaluation [cite: 44]
+    private String url; // base or scraping entry API point
 }

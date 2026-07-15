@@ -98,21 +98,21 @@ services:
 
   background-worker:
     build:
-      context: ./background-worker-spring
-      dockerfile: worker.Dockerfile
-      network: host
+      context: ./background-worker-python
+      dockerfile: Dockerfile
     container_name: scraper-background-worker
-    volumes:
-      - ./background-worker-spring/target:/app/target
+    restart: always
     environment:
       - DB_HOST=postgres-db
+      - DB_NAME=job_scraper_system_db       # 🌟 Replace with your actual DB name
       - DB_USER=postgres
       - DB_PASSWORD=root
-      - SPRING_ARTEMIS_BROKER_URL=tcp://activemq-broker:61616
-      - SPRING_ARTEMIS_USER=admin
-      - SPRING_ARTEMIS_PASSWORD=adminPassword
-      - SPRING_MAIL_HOST=mailpit-smtp
-      - SPRING_MAIL_PORT=1025
+      - ACTIVEMQ_HOST=activemq-broker
+      - ACTIVEMQ_PORT=61613        # 🌟 Artemis standard port for STOMP protocol
+      - ACTIVEMQ_USER=admin
+      - ACTIVEMQ_PASSWORD=adminPassword
+      - MAIL_HOST=mailpit-smtp
+      - MAIL_PORT=1025
     depends_on:
       postgres-db:
         condition: service_healthy

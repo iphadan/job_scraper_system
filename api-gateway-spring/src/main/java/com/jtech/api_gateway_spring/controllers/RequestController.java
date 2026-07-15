@@ -1,9 +1,10 @@
 package com.jtech.api_gateway_spring.controllers;
 
 import com.jtech.api_gateway_spring.model.Request;
-import com.jtech.api_gateway_spring.repository.RequestRepository;
+import com.jtech.api_gateway_spring.service.RequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +17,7 @@ import java.util.List;
 @Slf4j
 public class RequestController {
 
-    private final RequestRepository requestRepository;
+    private final RequestService requestService;
 
     /**
      * Read Endpoint: Fetches active tracking strategies belonging strictly to the logged-in user
@@ -24,11 +25,9 @@ public class RequestController {
     @GetMapping
     public ResponseEntity<List<Request>> getAllUserRequests() {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
-        log.info("User '{}' is executing high-performance indexed strategy fetch.", currentUsername);
+        log.info("Controller routing fetch request for user '{}'", currentUsername);
 
-        // 🌟 Direct database filtering using Postgres index execution
-        List<Request> userRequests = requestRepository.findByUsernameIgnoreCase(currentUsername);
-
+        List<Request> userRequests = requestService.getRequestsForUser(currentUsername);
         return ResponseEntity.ok(userRequests);
     }
 
@@ -37,22 +36,15 @@ public class RequestController {
      */
     @PostMapping
     public ResponseEntity<Request> createRequest(@RequestBody Request requestPayload) {
-        // 1. Secure Identity Extraction (Pulling directly from cryptographically verified token context)
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
-        log.info("User '{}' is initializing a new job scraping strategy.", currentUsername);
+        log.info("Controller routing save request for user '{}'", currentUsername);
 
-        // 2. Enforce Data Isolation Boundary
-        // Hardcode the extracted username into the model to prevent payload spoofing
-        requestPayload.setUsername(currentUsername);
-
-        // 3. Set Default Status if not provided (e.g., PENDING or ACTIVE)
-        if (requestPayload.getStatus() == null || requestPayload.getStatus().isEmpty()) {
-            requestPayload.setStatus("ACTIVE");
+        try {
+            Request savedRequest = requestService.createRequest(requestPayload, currentUsername);
+            return ResponseEntity.status(HttpStatus.CREATED).body(savedRequest);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid target site specified: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-
-        // 4. Save to PostgreSQL Database
-        Request savedRequest = requestRepository.save(requestPayload);
-
-        return ResponseEntity.status(201).body(savedRequest);
     }
 }
