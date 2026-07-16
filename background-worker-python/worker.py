@@ -36,9 +36,12 @@ ACTIVEMQ_HOST = os.getenv("ACTIVEMQ_HOST", "activemq-broker")
 ACTIVEMQ_PORT = int(os.getenv("ACTIVEMQ_PORT", 61613))
 ACTIVEMQ_USER = os.getenv("ACTIVEMQ_USER", "admin")
 ACTIVEMQ_PASSWORD = os.getenv("ACTIVEMQ_PASSWORD", "adminPassword")
-QUEUE_NAME = "/queue/job.scrape.queue"
+QUEUE_NAME = "job.scrape.queue"  # 👈 Keep this clean
 
 class JobQueueListener(stomp.ConnectionListener):
+    def __init__(self, conn=None):
+        self.conn = conn
+
     def on_message(self, frame):
         db_session = SessionLocal()
         try:
@@ -88,7 +91,15 @@ def start_worker():
     while True:
         try:
             conn.connect(ACTIVEMQ_USER, ACTIVEMQ_PASSWORD, wait=True)
-            conn.subscribe(destination=QUEUE_NAME, id=1, ack='auto')
+            
+            # ✅ Only ONE clean subscription call with a string ID and the ANYCAST header
+            conn.subscribe(
+                destination=QUEUE_NAME, 
+                id="sub-0", 
+                ack='auto',
+                headers={'subscription-type': 'ANYCAST'}
+            )
+            
             print(f"🔌 Connected to ActiveMQ Broker! Listening on: {QUEUE_NAME}")
             break
         except Exception as e:

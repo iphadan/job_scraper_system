@@ -32,8 +32,8 @@ services:
     image: apache/activemq-artemis:latest-alpine
     container_name: scraper-activemq
     environment:
-      AMQ_USER: admin
-      AMQ_PASSWORD: adminPassword
+      ARTEMIS_USER: admin
+      ARTEMIS_PASSWORD: adminPassword
     ports:
       - "61616:61616"
       - "8161:8161"
@@ -108,7 +108,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=root
       - ACTIVEMQ_HOST=activemq-broker
-      - ACTIVEMQ_PORT=61613        # 🌟 Artemis standard port for STOMP protocol
+      - ACTIVEMQ_PORT=61616        # 🌟 Artemis standard port for STOMP protocol
       - ACTIVEMQ_USER=admin
       - ACTIVEMQ_PASSWORD=adminPassword
       - MAIL_HOST=mailpit-smtp

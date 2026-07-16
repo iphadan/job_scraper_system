@@ -25,7 +25,8 @@ public class JobOrchestrationScheduler {
 
     private static final String QUEUE_NAME = "job.scrape.queue";
 
-    @Scheduled(cron = "${app.scheduler.cron:0 */15 * * * *}") // Defaults to every 15 minutes
+  //  @Scheduled(cron = "${app.scheduler.cron:0 */15 * * * *}") // Defaults to every 15 minutes
+  @Scheduled(fixedRate = 60000)
     @Transactional(readOnly = true) // Keeps Hibernate session open to lazy-load collections if needed
     public void executeCoreTick() {
         log.info("Initiating system core orchestration tick...");
