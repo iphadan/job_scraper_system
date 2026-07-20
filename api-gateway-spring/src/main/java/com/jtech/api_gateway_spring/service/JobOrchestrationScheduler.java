@@ -1,5 +1,6 @@
 package com.jtech.api_gateway_spring.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper; // 👈 1. Import Jackson ObjectMapper
 import com.jtech.api_gateway_spring.dto.JobScrapePayload;
 import com.jtech.api_gateway_spring.model.Request;
 import com.jtech.api_gateway_spring.model.TargetSite;
@@ -19,42 +20,40 @@ import java.util.List;
 @Slf4j
 public class JobOrchestrationScheduler {
 
-    // 🌟 Switch dependency to RequestRepository
     private final RequestRepository requestRepository;
     private final JmsTemplate jmsTemplate;
+    private final ObjectMapper objectMapper; // 👈 2. Inject ObjectMapper
 
     private static final String QUEUE_NAME = "job.scrape.queue";
 
-  //  @Scheduled(cron = "${app.scheduler.cron:0 */15 * * * *}") // Defaults to every 15 minutes
-  @Scheduled(fixedRate = 60000)
-    @Transactional(readOnly = true) // Keeps Hibernate session open to lazy-load collections if needed
+    @Scheduled(fixedRate = 600000/5)
+    @Transactional(readOnly = true)
     public void executeCoreTick() {
         log.info("Initiating system core orchestration tick...");
 
-        // 1. Pull active subscription requests
         List<Request> activeRequests = requestRepository.findAllActiveRequestsWithSites();
         log.info("Aggregated {} active user requests for processing.", activeRequests.size());
 
-        // 2. Map and split workloads
         for (Request request : activeRequests) {
-            // Split comma-separated keywords
             List<String> keywordList = Arrays.asList(request.getKeywords().split("\\s*,\\s*"));
 
-            // Dispatch a payload for every targeted site linked to this request
             for (TargetSite target : request.getTargetSites()) {
 
-                // Construct the updated payload structure
                 JobScrapePayload payload = new JobScrapePayload(
                         request.getId(),
-                        target.getSiteCode(), // Use clean site code (e.g. "REMOTEOK") instead of auto-incremented target IDs
-                        target.getUrl(),      // Base URL/API endpoint
+                        target.getSiteCode(),
+                        target.getUrl(),
                         keywordList
                 );
 
-                // 3. Stream to ActiveMQ
                 try {
-                    jmsTemplate.convertAndSend(QUEUE_NAME, payload);
-                    log.debug("Dispatched task to broker: RequestID -> {}, SiteCode -> {}",
+                    // 👈 3. Convert payload record to a JSON string
+                    String jsonPayload = objectMapper.writeValueAsString(payload);
+
+                    // 👈 4. Send pure JSON string to queue
+                    jmsTemplate.convertAndSend(QUEUE_NAME, jsonPayload);
+
+                    log.info("Dispatched task to broker: RequestID -> {}, SiteCode -> {}",
                             payload.requestId(), payload.siteCode());
                 } catch (Exception e) {
                     log.error("Failed to stream target task to broker for Request ID: {}, Site: {}",

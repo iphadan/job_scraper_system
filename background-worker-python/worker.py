@@ -45,6 +45,7 @@ class JobQueueListener(stomp.ConnectionListener):
     def on_message(self, frame):
         db_session = SessionLocal()
         try:
+            print(f"📥 Raw Message Received from Queue: {repr(frame.body)}")          
             payload = json.loads(frame.body)
             request_id = payload.get("requestId")
             site_code = payload.get("siteCode")

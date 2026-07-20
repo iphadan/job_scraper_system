@@ -37,6 +37,7 @@ services:
     ports:
       - "61616:61616"
       - "8161:8161"
+      - "61613:61613" # 👈 Make sure STOMP port is exposed!
     networks:
       - scraper-network
 
@@ -108,7 +109,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=root
       - ACTIVEMQ_HOST=activemq-broker
-      - ACTIVEMQ_PORT=61616        # 🌟 Artemis standard port for STOMP protocol
+      - ACTIVEMQ_PORT=61613        # 🌟 Artemis standard port for STOMP protocol
       - ACTIVEMQ_USER=admin
       - ACTIVEMQ_PASSWORD=adminPassword
       - MAIL_HOST=mailpit-smtp

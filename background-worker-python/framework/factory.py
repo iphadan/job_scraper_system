@@ -2,11 +2,13 @@ from typing import Type, Dict
 from framework.base_scraper import BaseScraper
 from scrapers.remoteok import RemoteOkScraper
 from scrapers.wwr import WwrScraper
+from scrapers.djini import DjiniScraper
 
 class ScraperFactory:
     _registry: Dict[str, Type[BaseScraper]] = {
         "REMOTEOK": RemoteOkScraper,
-        "WWR": WwrScraper
+        "WWR": WwrScraper,
+         "DJINI":DjiniScraper
     }
 
     @classmethod
