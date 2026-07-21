@@ -23,6 +23,7 @@ class RemoteOkScraper(BaseScraper):
 
             # Filter locally using requested keywords
             if any(kw.lower() in title or kw.lower() in description or kw.lower() in tags for kw in keywords):
+                print(f"✅ Matched job: {description}")
                 matched_jobs.append({
                     "title": raw_job.get("position"),
                     "company": raw_job.get("company"),

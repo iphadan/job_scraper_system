@@ -13,6 +13,7 @@ class DjiniScraper:
         try:
             # Basic HTML Fetching (Adjust selectors based on Djini HTML structure)
             response = requests.get("https://djinni.co/jobs/", headers=headers, timeout=10)
+            print(f"📡 Djini Response: {response}")
             if response.status_code != 200:
                 return matched_jobs
 
