@@ -34,7 +34,7 @@ private final TargetSiteRepository targetSiteRepository;
                     TargetSite djini = targetSiteRepository.findBySiteCode("DJINI").isEmpty() == true ?    targetSiteRepository.save(new TargetSite(null, "DJINI", "Djini Job Board", "https://djini.co")) : null;
                     TargetSite kifiya = targetSiteRepository.findBySiteCode("KIFIYA").isEmpty() == true ?    targetSiteRepository.save(new TargetSite(null, "KIFIYA", "Kifiya Job Board", "https://kifiya.com/work-with-us/](https://kifiya.com/work-with-us/")) : null;
                     TargetSite eagleLion = targetSiteRepository.findBySiteCode("EAGLELION").isEmpty() == true ?    targetSiteRepository.save(new TargetSite(null, "EAGLELION", "EagleLion Job Board", "https://www.eaglelionsystems.com/team")) : null;
-                    TargetSite safaricomEt = targetSiteRepository.findBySiteCode("SAFARICOM_ET").isEmpty() == true ?    targetSiteRepository.save(new TargetSite(null, "safaricomEt", "Safaricom Job Board", "https://www.safaricom.et/work-with-us/careers/vacancies")) : null;
+                    TargetSite safaricomEt = targetSiteRepository.findBySiteCode("SAFARICOM_ET").isEmpty() == true ?    targetSiteRepository.save(new TargetSite(null, "SAFARICOM_ET", "Safaricom Job Board", "https://www.safaricom.et/work-with-us/careers/vacancies")) : null;
 
                     List<String> logs = new ArrayList<>();
 
@@ -44,7 +44,7 @@ private final TargetSiteRepository targetSiteRepository;
                     logs.add(  remoteOk == null ? " KIFIYA site Already Exist" : " KIFIYA job site has been added");
                     logs.add(  remoteOk == null ? " EAGLELION site Already Exist" : " EAGLELION job site has been added");
                     logs.add(  remoteOk == null ? " SAFARICOM_ET site Already Exist" : " SAFARICOM_ET job site has been added");
-                    
+
                     for(String message : logs){
                         log.info(message);
                     }
