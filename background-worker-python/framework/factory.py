@@ -3,12 +3,17 @@ from framework.base_scraper import BaseScraper
 from scrapers.remoteok import RemoteOkScraper
 from scrapers.wwr import WwrScraper
 from scrapers.djini import DjiniScraper
-
+from scrapers.kifiya_scraper import KifiyaScraper
+from scrapers.eaglelion_scraper import EagleLionScraper
+from scrapers.safaricom_et_scraper import SafaricomEtScraper
 class ScraperFactory:
     _registry: Dict[str, Type[BaseScraper]] = {
         "REMOTEOK": RemoteOkScraper,
         "WWR": WwrScraper,
-         "DJINI":DjiniScraper
+         "DJINI": DjiniScraper,
+         "KIFIYA": SafaricomEtScraper,
+         "EAGLELION": EagleLionScraper,
+         "SAFARICOM_ET" : SafaricomEtScraper
     }
 
     @classmethod
