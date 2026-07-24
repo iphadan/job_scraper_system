@@ -3,6 +3,7 @@ import os
 import sys
 import time
 from framework.factory import ScraperFactory
+import requests
 from sqlalchemy import (
     Column,
     DateTime,
@@ -82,9 +83,7 @@ class JobQueueListener(stomp.ConnectionListener):
       saved_count = 0
       for job in scraped_jobs:
         exists = (
-            db_session.query(ScrapedJob)
-            .filter(ScrapedJob.url == job["url"])
-            .first()
+            db_session.query(ScrapedJob).filter(ScrapedJob.url == job["url"]).first()
         )
         if not exists:
           db_job = ScrapedJob(
@@ -96,6 +95,17 @@ class JobQueueListener(stomp.ConnectionListener):
           )
           db_session.add(db_job)
           saved_count += 1
+
+          # 📧 Send Email Alert Request to Gateway Service
+          try:
+            notify_gateway_of_job(
+                title=job["title"],
+                company=job["company"],
+                job_url=job["url"],
+                description=job["description"]
+            )
+          except Exception as mail_err:
+            print(f"⚠️ Email notification dispatch failed: {mail_err}")
 
       db_session.commit()
       print(f"✅ Successfully inserted {saved_count} new jobs into DB.")
@@ -159,7 +169,20 @@ def start_worker():
   except KeyboardInterrupt:
     print("Halting Python Daemon...")
     conn.disconnect()
-
+def notify_gateway_of_job(title: str, company: str, job_url: str, description: str):
+  endpoint = "/api/notifications/notify-matching-users"
+  payload = {
+      "jobTitle": title,
+      "company": company,
+      "jobUrl": job_url,
+      "description": description,
+  }
+  try:
+    res = requests.post(endpoint, json=payload, timeout=5)
+    if res.status_code == 200:
+      print(f"📧 Notification sent to Spring Gateway: {res.json()}")
+  except Exception as e:
+    print(f"⚠️ Failed to send notification request to Gateway: {e}")
 
 if __name__ == "__main__":
   start_worker()

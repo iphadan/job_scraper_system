@@ -91,6 +91,10 @@ services:
       - MQ_HOST=activemq-broker
       - MQ_USER=admin
       - MQ_PASSWORD=adminPassword
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SYSTEM_EMAIL_ADDRESS=ephadaniel177@gmail.com
+      - SYSTEM_EMAIL_PASSWORD=odcf dxsh tpke segg
     depends_on:
       postgres-db:
         condition: service_healthy

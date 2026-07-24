@@ -1,88 +1,90 @@
 import React, { useState } from 'react';
 
-const Login = ({ onLoginSuccess }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+export default function Login({ onLoginSuccess }) {
+  const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    preferredKeywords: ''
+  });
+  const [error, setError] = useState('');
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setErrorMessage('');
-        setIsLoading(true);
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-        try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password }),
-            });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
 
-            if (!response.ok) {
-                throw new Error('Invalid Active Directory credentials. Access Denied.');
-            }
+    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
 
-            const data = await response.json();
-            
-            // Store token securely in browser storage
+    try {
+      const response = await fetch(`${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Authentication failed');
+      }
+
+      if (isLogin) {
+  // Store token securely in browser storage
             localStorage.setItem('token', data.accessToken);
-            localStorage.setItem('username', username);
-            
-            // Notify parent app of successful login state change
-            onLoginSuccess();
-            
-        } catch (error) {
-            setErrorMessage(error.message || 'Connection failed to the API Gateway.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+              onLoginSuccess(data);
+      } else {
+        alert('Registration successful! Please login.');
+        setIsLogin(true);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
-    return (
-        <div style={styles.container}>
-            <form onSubmit={handleSubmit} style={styles.form}>
-                <h2>Enterprise Job Scraper Login</h2>
-                
-                {errorMessage && <div style={styles.error}>{errorMessage}</div>}
-                
-                <div style={styles.inputGroup}>
-                    <label>Username</label>
-                    <input 
-                        type="text" 
-                        value={username} 
-                        onChange={(e) => setUsername(e.target.value)} 
-                        required 
-                        disabled={isLoading}
-                    />
-                </div>
-                
-                <div style={styles.inputGroup}>
-                    <label>Password</label>
-                    <input 
-                        type="password" 
-                        value={password} 
-                        onChange={(e) => setPassword(e.target.value)} 
-                        required 
-                        disabled={isLoading}
-                    />
-                </div>
-                
-                <button type="submit" style={styles.button} disabled={isLoading}>
-                    {isLoading ? 'Verifying Credentials...' : 'Login'}
-                </button>
-            </form>
+  return (
+    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
+      <h2>{isLogin ? 'Login to Job Portal' : 'Register New Account'}</h2>
+      
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      <form onSubmit={handleSubmit}>
+        {!isLogin && (
+          <>
+            <div style={{ marginBottom: '10px' }}>
+              <label>Full Name:</label>
+              <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
+            </div>
+
+            <div style={{ marginBottom: '10px' }}>
+              <label>Preferred Keywords (comma-separated):</label>
+              <input type="text" name="preferredKeywords" placeholder="e.g. Java, React, DevOps" value={formData.preferredKeywords} onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
+            </div>
+          </>
+        )}
+
+        <div style={{ marginBottom: '10px' }}>
+          <label>Email Address:</label>
+          <input type="email" name="email" value={formData.email} onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
         </div>
-    );
-};
 
-const styles = {
-    container: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' },
-    form: { padding: '2rem', background: 'white', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', width: '300px' },
-    inputGroup: { marginBottom: '1rem', display: 'flex', flexDirection: 'column' },
-    button: { width: '100%', padding: '0.75rem', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    error: { color: 'red', backgroundColor: '#fce8e6', padding: '0.5rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.9rem' }
-};
+        <div style={{ marginBottom: '15px' }}>
+          <label>Password:</label>
+          <input type="password" name="password" value={formData.password} onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
+        </div>
 
-export default Login;
+        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '4px' }}>
+          {isLogin ? 'Login' : 'Register'}
+        </button>
+      </form>
+
+      <p style={{ marginTop: '15px', cursor: 'pointer', color: '#007bff' }} onClick={() => setIsLogin(!isLogin)}>
+        {isLogin ? "Don't have an account? Register here." : "Already have an account? Login here."}
+      </p>
+    </div>
+  );
+}

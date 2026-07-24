@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 🌟 STEP 2: Permitting all OPTIONS requests globally at the firewall layer
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/login","api/auth/register").permitAll()
                         .anyRequest().authenticated()
                 );
 
