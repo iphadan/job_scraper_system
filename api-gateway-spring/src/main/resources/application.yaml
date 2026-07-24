@@ -27,5 +27,19 @@ spring:
     user: ${MQ_USER:admin}
     password: ${MQ_PASSWORD:admin}
 
+  # ✉️ Email Configuration (Must be indented under 'spring')
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SYSTEM_EMAIL_ADDRESS:ephadaniel177@gmail.com}
+    password: ${SYSTEM_EMAIL_PASSWORD:629177490ipHA++}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
 server:
   port: ${SERVER_PORT:8080}
