@@ -171,7 +171,8 @@ def start_worker():
     print("Halting Python Daemon...")
     conn.disconnect()
 def notify_gateway_of_job(title: str, company: str, job_url: str, description: str):
-  endpoint = "http://nginx-router/api/notifications/notify-matching-users"
+  print(f"📧 Sending job notification to Spring Gateway for: {title} at {company}")
+  endpoint = "http://api-gateway:8080/api/notifications/notify-matching-users"
   payload = {
       "jobTitle": title,
       "company": company,
