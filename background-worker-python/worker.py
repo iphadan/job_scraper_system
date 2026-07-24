@@ -98,6 +98,7 @@ class JobQueueListener(stomp.ConnectionListener):
 
           # 📧 Send Email Alert Request to Gateway Service
           try:
+            print("Notifying Spring Gateway of new job listing...")
             notify_gateway_of_job(
                 title=job["title"],
                 company=job["company"],
@@ -170,7 +171,7 @@ def start_worker():
     print("Halting Python Daemon...")
     conn.disconnect()
 def notify_gateway_of_job(title: str, company: str, job_url: str, description: str):
-  endpoint = "/api/notifications/notify-matching-users"
+  endpoint = "http://nginx-router/api/notifications/notify-matching-users"
   payload = {
       "jobTitle": title,
       "company": company,
