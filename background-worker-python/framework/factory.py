@@ -11,7 +11,7 @@ class ScraperFactory:
         "REMOTEOK": RemoteOkScraper,
         "WWR": WwrScraper,
          "DJINI": DjiniScraper,
-         "KIFIYA": SafaricomEtScraper,
+         "KIFIYA": KifiyaScraper,
          "EAGLELION": EagleLionScraper,
          "SAFARICOM_ET" : SafaricomEtScraper
     }
